@@ -11,6 +11,19 @@
   --hightlight-color: #f1c800;
 }
 
+/* Surbrillance de sélection personnalisée */
+::selection {
+  background-color: var(--hightlight-color);
+  color: var(--font-color);
+  text-shadow: none;
+}
+
+::-moz-selection {
+  background-color: var(--hightlight-color);
+  color: var(--font-color);
+  text-shadow: none;
+}
+
 body {
   background-color: var(--backgpround-color);
   color: var(--font-color);

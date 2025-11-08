@@ -26,14 +26,30 @@
     <meta name="twitter:description" content="Discover Codealuxz's photography portfolio. Landscape, street, and portrait photography capturing unique moments and perspectives." />
     <meta name="twitter:image" content="https://photo.codealuxz.fr/screen.png" />
 
-    <link rel="stylesheet" href="https://use.typekit.net/eor4sdg.css" />
-    <link rel="stylesheet" href="styles.css" />
+    <!-- Preconnect pour optimiser les ressources externes -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://use.typekit.net" />
+
+    <!-- DNS Prefetch pour les ressources externes -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://use.typekit.net" />
+
+    <!-- Preload des ressources critiques -->
+    <link rel="preload" href="styles.css" as="style" />
+    <link rel="preload" href="script.js" as="script" />
+
+    <!-- Stylesheets avec media print pour non-critiques -->
+    <link rel="stylesheet" href="https://use.typekit.net/eor4sdg.css" media="print" onload="this.media='all'" />
+    <link rel="stylesheet" href="styles.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Quicksand:wght@300..700&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+
     <script src="script.js" defer></script>
     <link rel="icon" type="image/png" href="./logo.png" />
   </head>

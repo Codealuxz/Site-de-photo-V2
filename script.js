@@ -27,6 +27,24 @@ function createGallery() {
   }
 }
 
+// Intersection Observer pour lazy loading optimisé
+const imageObserver = new IntersectionObserver((entries, observer) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const img = entry.target;
+      const src = img.dataset.src;
+      if (src) {
+        img.src = src;
+        img.removeAttribute('data-src');
+        observer.unobserve(img);
+      }
+    }
+  });
+}, {
+  rootMargin: '50px', // Commencer à charger 50px avant que l'image soit visible
+  threshold: 0.01
+});
+
 // Fonction pour ajouter une seule image à la galerie
 function addImageToGallery(imageName, index) {
   if (columns.length === 0) return;
@@ -40,16 +58,26 @@ function addImageToGallery(imageName, index) {
   container.style.transform = 'translateY(20px) scale(0.9)';
   container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
 
-  // Créer l'image
+  // Créer l'image avec lazy loading optimisé
   const img = document.createElement('img');
-  img.src = `./photos_webp/${imageName}`;
+
+  // Charger immédiatement les 6 premières images, lazy load pour le reste
+  if (index < 6) {
+    img.src = `./photos_webp/${imageName}`;
+  } else {
+    img.dataset.src = `./photos_webp/${imageName}`;
+    img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"%3E%3C/svg%3E'; // Placeholder transparent
+    imageObserver.observe(img);
+  }
+
   img.alt = imageName;
-  img.loading = 'lazy'; // Lazy loading pour de meilleures performances
+  img.loading = 'lazy';
+  img.decoding = 'async'; // Décodage asynchrone
 
   // Ajouter l'événement de clic pour ouvrir le lightbox
   container.addEventListener('click', () => {
     openLightbox(index);
-  });
+  }, { passive: true });
 
   // Ajouter l'image au conteneur
   container.appendChild(img);
@@ -58,11 +86,13 @@ function addImageToGallery(imageName, index) {
   const columnIndex = index % columnCount;
   columns[columnIndex].appendChild(container);
 
-  // Animation d'apparition
-  setTimeout(() => {
-    container.style.opacity = '1';
-    container.style.transform = 'translateY(0) scale(1)';
-  }, 10);
+  // Animation d'apparition optimisée avec requestAnimationFrame
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      container.style.opacity = '1';
+      container.style.transform = 'translateY(0) scale(1)';
+    });
+  });
 }
 
 // Recharger la galerie lors du redimensionnement
@@ -173,17 +203,16 @@ function showNextImage() {
   lightboxImg.src = `./photos_webp/${images[currentImageIndex]}`;
 }
 
-// Fonction pour vérifier si une image existe
+// Fonction optimisée pour vérifier si une image existe (utilise HEAD request)
 function imageExists(imagePath) {
   return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(true);
-    img.onerror = () => resolve(false);
-    img.src = imagePath;
+    fetch(imagePath, { method: 'HEAD' })
+      .then(response => resolve(response.ok))
+      .catch(() => resolve(false));
   });
 }
 
-// Charger les images automatiquement (1.webp, 2.webp, 3.webp, ...)
+// Charger les images automatiquement avec détection par batch
 async function loadImages() {
   const loadingContainer = document.getElementById('loading');
 
@@ -198,25 +227,44 @@ async function loadImages() {
 
   let index = 1;
   let consecutiveFailures = 0;
-  const maxConsecutiveFailures = 5; // Arrêter après 5 échecs consécutifs
+  const maxConsecutiveFailures = 5;
+  const batchSize = 10; // Vérifier 10 images en parallèle
 
   while (consecutiveFailures < maxConsecutiveFailures) {
-    const imagePath = `./photos_webp/${index}.webp`;
-    const exists = await imageExists(imagePath);
-
-    if (exists) {
-      const imageName = `${index}.webp`;
-      images.push(imageName);
-
-      // Ajouter l'image immédiatement à la galerie
-      addImageToGallery(imageName, images.length - 1);
-
-      consecutiveFailures = 0;
-    } else {
-      consecutiveFailures++;
+    // Créer un batch de vérifications en parallèle
+    const checks = [];
+    for (let i = 0; i < batchSize; i++) {
+      const currentIndex = index + i;
+      const imagePath = `./photos_webp/${currentIndex}.webp`;
+      checks.push({ index: currentIndex, promise: imageExists(imagePath) });
     }
 
-    index++;
+    // Vérifier toutes les images du batch en parallèle
+    const results = await Promise.all(checks.map(c => c.promise));
+
+    // Traiter les résultats
+    let foundInBatch = false;
+    for (let i = 0; i < results.length; i++) {
+      if (results[i]) {
+        const imageName = `${checks[i].index}.webp`;
+        images.push(imageName);
+        addImageToGallery(imageName, images.length - 1);
+        foundInBatch = true;
+        consecutiveFailures = 0;
+      } else if (!foundInBatch && i > 0) {
+        consecutiveFailures++;
+      }
+    }
+
+    // Si aucune image trouvée dans le batch, arrêter
+    if (!foundInBatch) {
+      break;
+    }
+
+    index += batchSize;
+
+    // Petit délai pour ne pas surcharger le navigateur
+    await new Promise(resolve => setTimeout(resolve, 10));
   }
 }
 
