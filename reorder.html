@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réorganiser les Photos - Codealuxz</title>
+    <link rel="stylesheet" href="https://use.typekit.net/eor4sdg.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Quicksand:wght@300..700&display=swap" rel="stylesheet" />
+    <style>
+        /* Styles additionnels pour la page de réorganisation */
+        .reorder-controls {
+            position: fixed;
+            top: 160px;
+            left: 0;
+            right: 0;
+            background: var(--backgpround-color);
+            z-index: 999;
+            padding: 20px 50px;
+            border-bottom: 2px solid var(--hightlight-color);
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .reorder-controls button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-family: "quicksand", sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .reorder-controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn-load {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .status {
+            position: fixed;
+            top: 270px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 998;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-family: "quicksand", sans-serif;
+            font-weight: 600;
+            display: none;
+            max-width: 80%;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        main {
+            margin-top: 320px !important;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 2px solid var(--hightlight-color);
+            border-radius: 8px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .instructions h3 {
+            font-family: "courage", sans-serif;
+            color: #856404;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #856404;
+            font-family: "quicksand", sans-serif;
+            font-size: 16px;
+        }
+
+        .instructions li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        /* Numérotation des photos */
+        .photo-number {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            font-family: "quicksand", sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* État de drag */
+        .img-container.dragging {
+            opacity: 0.5;
+            transform: scale(0.95) rotate(2deg);
+        }
+
+        .img-container.drag-over {
+            outline: 3px solid var(--hightlight-color);
+            outline-offset: 5px;
+        }
+
+        .img-container {
+            cursor: move !important;
+            user-select: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-family: "quicksand", sans-serif;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--hightlight-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .reorder-controls {
+                padding: 15px 20px;
+            }
+
+            .reorder-controls button {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+
+            main {
+                margin-top: 350px !important;
+                padding: 20px !important;
+            }
+
+            .instructions {
+                padding: 15px 20px;
+            }
+
+            .photo-number {
+                width: 35px;
+                height: 35px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="left">
+            <img class="logo" src="./icons/logo.png" alt="" />
+            <nav>
+                <div class="item"><a href="index.html">photo</a></div>
+                <div class="item"><a href="about.html">about</a></div>
+                <div class="item"><a href="contact.html">contact</a></div>
+            </nav>
+        </div>
+        <div class="right">
+            <div class="social">
+                <div class="sc-media instagram"><a target="_blank" href="https://instagram.com/codealuxz2">Instagram</a></div>
+            </div>
+        </div>
+    </header>
+
+    <div class="reorder-controls">
+        <button class="btn-load" onclick="loadPhotos()">📁 Charger les photos</button>
+        <button class="btn-save" onclick="saveOrder()">💾 Sauvegarder l'ordre</button>
+        <button class="btn-reset" onclick="resetOrder()">🔄 Réinitialiser</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <main>
+        <div class="instructions">
+            <h3>📋 Instructions</h3>
+            <ol>
+                <li>Cliquez sur "Charger les photos" pour afficher toutes les photos du dossier</li>
+                <li>Glissez-déposez les photos pour les réorganiser dans l'ordre souhaité</li>
+                <li>Cliquez sur "Sauvegarder l'ordre" pour générer le fichier order.json</li>
+                <li>Exécutez le script Python "apply_order.py" pour renommer les photos</li>
+            </ol>
+        </div>
+
+        <div class="content" id="gallery"></div>
+        <div class="prog-shad"></div>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2025 Codealuxz. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="https://codealuxz.fr">Codealuxz Portfolio</a>
+                <a href="https://instagram.com/codealuxz2" target="_blank">Instagram</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let photos = [];
+        let currentOrder = [];
+
+        // Fonction pour obtenir le nombre de colonnes selon la largeur d'écran
+        function getColumnCount() {
+            const width = window.innerWidth;
+            if (width <= 768) return 1;
+            if (width <= 1024) return 2;
+            return 3;
+        }
+
+        async function loadPhotos() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '<div class="loading"><div class="spinner"></div>Chargement des photos...</div>';
+
+            showStatus('Recherche des photos...', 'info');
+
+            photos = [];
+            let index = 1;
+            let consecutiveFailures = 0;
+            const maxConsecutiveFailures = 5;
+
+            while (consecutiveFailures < maxConsecutiveFailures) {
+                const imagePath = `./photos/${index}.jpg`;
+                const exists = await imageExists(imagePath);
+
+                if (exists) {
+                    photos.push(`${index}.jpg`);
+                    consecutiveFailures = 0;
+                } else {
+                    consecutiveFailures++;
+                }
+                index++;
+            }
+
+            currentOrder = [...photos];
+            displayPhotos();
+            showStatus(`✅ ${photos.length} photos chargées avec succès !`, 'success');
+        }
+
+        function imageExists(imagePath) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(true);
+                img.onerror = () => resolve(false);
+                img.src = imagePath;
+            });
+        }
+
+        function displayPhotos() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+
+            const columnCount = getColumnCount();
+
+            // Créer les colonnes
+            const columns = [];
+            for (let i = 0; i < columnCount; i++) {
+                const col = document.createElement('div');
+                col.className = 'gallery-column';
+                gallery.appendChild(col);
+                columns.push(col);
+            }
+
+            // Distribuer les photos dans les colonnes
+            currentOrder.forEach((photoName, index) => {
+                const container = document.createElement('div');
+                container.className = 'img-container';
+                container.draggable = true;
+                container.dataset.index = index;
+                container.dataset.photo = photoName;
+
+                // Numéro de la photo
+                const number = document.createElement('div');
+                number.className = 'photo-number';
+                number.textContent = index + 1;
+
+                // Image
+                const img = document.createElement('img');
+                img.src = `./photos/${photoName}`;
+                img.alt = photoName;
+                img.loading = 'lazy';
+                img.draggable = false; // Empêcher le drag de l'image elle-même
+
+                container.appendChild(number);
+                container.appendChild(img);
+
+                // Événements drag & drop
+                container.addEventListener('dragstart', handleDragStart);
+                container.addEventListener('dragend', handleDragEnd);
+                container.addEventListener('dragover', handleDragOver);
+                container.addEventListener('drop', handleDrop);
+                container.addEventListener('dragenter', handleDragEnter);
+                container.addEventListener('dragleave', handleDragLeave);
+
+                // Ajouter à la colonne appropriée
+                const columnIndex = index % columnCount;
+                columns[columnIndex].appendChild(container);
+            });
+        }
+
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.img-container').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            if (this !== draggedElement) {
+                this.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+
+            this.classList.remove('drag-over');
+
+            if (draggedElement !== this) {
+                const draggedIndex = parseInt(draggedElement.dataset.index);
+                const targetIndex = parseInt(this.dataset.index);
+
+                // Réorganiser le tableau
+                const [removed] = currentOrder.splice(draggedIndex, 1);
+                currentOrder.splice(targetIndex, 0, removed);
+
+                // Rafraîchir l'affichage
+                displayPhotos();
+            }
+
+            return false;
+        }
+
+        function saveOrder() {
+            if (currentOrder.length === 0) {
+                showStatus('⚠️ Chargez d\'abord les photos !', 'error');
+                return;
+            }
+
+            const orderData = {
+                timestamp: new Date().toISOString(),
+                count: currentOrder.length,
+                order: currentOrder
+            };
+
+            const dataStr = JSON.stringify(orderData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'order.json';
+            link.click();
+
+            showStatus(`✅ Fichier order.json téléchargé ! (${currentOrder.length} photos)`, 'success');
+        }
+
+        function resetOrder() {
+            if (photos.length === 0) {
+                showStatus('⚠️ Aucune photo chargée !', 'error');
+                return;
+            }
+            currentOrder = [...photos];
+            displayPhotos();
+            showStatus('🔄 Ordre réinitialisé', 'info');
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Recharger la galerie lors du redimensionnement
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (currentOrder.length > 0) {
+                    displayPhotos();
+                }
+            }, 250);
+        });
+    </script>
+</body>
+</html>
