@@ -59,6 +59,11 @@
             color: white;
         }
 
+        .btn-load-json {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
         .status {
             position: fixed;
             top: 270px;
@@ -187,6 +192,93 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Modal JSON */
+        .json-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .json-modal.active {
+            display: flex;
+        }
+
+        .json-modal-content {
+            background: var(--backgpround-color);
+            border-radius: 15px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .json-modal-content h2 {
+            font-family: "courage", sans-serif;
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: var(--font-color);
+        }
+
+        .json-modal-content p {
+            font-family: "quicksand", sans-serif;
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: var(--font-color);
+        }
+
+        #jsonTextarea {
+            width: 100%;
+            min-height: 250px;
+            padding: 15px;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+            border: 2px solid var(--hightlight-color);
+            border-radius: 8px;
+            resize: vertical;
+            margin-bottom: 20px;
+            background: white;
+            color: #333;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .btn-confirm, .btn-cancel {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-family: "quicksand", sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
+        .btn-cancel {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-confirm:hover, .btn-cancel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .reorder-controls {
@@ -212,6 +304,27 @@
                 height: 35px;
                 font-size: 14px;
             }
+
+            .json-modal-content {
+                padding: 25px;
+            }
+
+            .json-modal-content h2 {
+                font-size: 24px;
+            }
+
+            #jsonTextarea {
+                min-height: 200px;
+                font-size: 12px;
+            }
+
+            .modal-buttons {
+                flex-direction: column;
+            }
+
+            .btn-confirm, .btn-cancel {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -236,6 +349,20 @@
         <button class="btn-load" onclick="loadPhotos()">📁 Charger les photos</button>
         <button class="btn-save" onclick="saveOrder()">💾 Sauvegarder l'ordre</button>
         <button class="btn-reset" onclick="resetOrder()">🔄 Réinitialiser</button>
+        <button class="btn-load-json" onclick="showJSONModal()">📂 Coller JSON</button>
+    </div>
+
+    <!-- Modal pour coller le JSON -->
+    <div id="jsonModal" class="json-modal">
+        <div class="json-modal-content">
+            <h2>Coller le JSON</h2>
+            <p>Collez votre fichier order.json ci-dessous :</p>
+            <textarea id="jsonTextarea" placeholder='{"timestamp": "...", "count": 47, "order": ["1.jpg", "2.jpg", ...]}'></textarea>
+            <div class="modal-buttons">
+                <button class="btn-confirm" onclick="loadFromPastedJSON()">✅ Charger</button>
+                <button class="btn-cancel" onclick="closeJSONModal()">❌ Annuler</button>
+            </div>
+        </div>
     </div>
 
     <div class="status" id="status"></div>
@@ -436,15 +563,19 @@
             };
 
             const dataStr = JSON.stringify(orderData, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            const url = URL.createObjectURL(dataBlob);
 
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'order.json';
-            link.click();
-
-            showStatus(`✅ Fichier order.json téléchargé ! (${currentOrder.length} photos)`, 'success');
+            // Copier dans le presse-papiers
+            navigator.clipboard.writeText(dataStr).then(() => {
+                // Afficher le JSON dans le modal
+                document.getElementById('jsonTextarea').value = dataStr;
+                showJSONModal();
+                showStatus(`✅ JSON copié dans le presse-papiers ! (${currentOrder.length} photos)`, 'success');
+            }).catch(err => {
+                // Si la copie échoue, juste afficher le modal
+                document.getElementById('jsonTextarea').value = dataStr;
+                showJSONModal();
+                showStatus(`✅ JSON généré ! (${currentOrder.length} photos)`, 'success');
+            });
         }
 
         function resetOrder() {
@@ -469,6 +600,67 @@
                 }, 5000);
             }
         }
+
+        function showJSONModal() {
+            const modal = document.getElementById('jsonModal');
+            modal.classList.add('active');
+            document.getElementById('jsonTextarea').focus();
+        }
+
+        function closeJSONModal() {
+            const modal = document.getElementById('jsonModal');
+            modal.classList.remove('active');
+            document.getElementById('jsonTextarea').value = '';
+        }
+
+        function loadFromPastedJSON() {
+            const jsonText = document.getElementById('jsonTextarea').value.trim();
+
+            if (!jsonText) {
+                showStatus('⚠️ Veuillez coller du JSON !', 'error');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(jsonText);
+
+                // Vérifier que le JSON contient un tableau "order"
+                if (!data.order || !Array.isArray(data.order)) {
+                    showStatus('❌ Format JSON invalide ! Le fichier doit contenir un champ "order"', 'error');
+                    return;
+                }
+
+                // Charger l'ordre depuis le JSON
+                photos = [...data.order];
+                currentOrder = [...data.order];
+
+                // Afficher les photos
+                displayPhotos();
+
+                // Fermer le modal
+                closeJSONModal();
+
+                showStatus(`✅ ${data.count || currentOrder.length} photos chargées depuis le JSON !`, 'success');
+
+            } catch (error) {
+                showStatus('❌ Erreur lors de la lecture du JSON : ' + error.message, 'error');
+            }
+        }
+
+        // Fermer le modal en cliquant en dehors
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('jsonModal');
+            if (e.target === modal) {
+                closeJSONModal();
+            }
+        });
+
+        // Fermer avec la touche Echap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeJSONModal();
+            }
+        });
 
         // Recharger la galerie lors du redimensionnement
         let resizeTimeout;
